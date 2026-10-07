@@ -1423,7 +1423,6 @@ function buildFilterUI() {
 
 /* ----------------------------- render tổng ----------------------------- */
 function renderAll() {
-  closeAc();
   $('#tbCount').textContent = '· ' + fmtN(S.filtered.length) + '/' + fmtN(S.rows.length) + ' phiếu';
   renderRef(); renderHero(); renderQuick(); renderPills(); renderActive(); renderAlert();
   renderKPIs(); renderOverview(); renderInsights(); renderCharts(); renderStatTables(); renderTable();
@@ -2105,19 +2104,27 @@ function buildAc(q) {
     h += '<div class="grp">' + g[1] + ' · ' + arr.length + ' kết quả</div>';
     arr.slice(0, g[0] === 'kh' ? 7 : 5).forEach(function (e) { items.push({ t: 'f', k: g[0], v: e[0] }); h += '<div class="it" data-ai="' + (items.length - 1) + '"><span class="tg">' + esc(g[1].split(' ')[0]) + '</span><span class="tx">' + hl(e[0], q) + '</span><span class="ct">' + e[1] + ' phiếu</span></div>'; });
   });
-  var tk = S.rows.filter(function (r) { return match(r.id + ' ' + r.name); }).slice(0, 6);
-  if (tk.length) {
-    h += '<div class="grp">Phiếu</div>';
-    tk.forEach(function (r) { items.push({ t: 'r', r: r }); h += '<div class="it" data-ai="' + (items.length - 1) + '"><span class="tg">#' + esc(r.id) + '</span><span class="tx">' + hl(r.name, q) + '</span><span class="ct">' + stBadge(r.st) + '</span></div>'; });
-  }
-  var nAll = S.rows.filter(function (r) { var ok = true; toks.forEach(function (t) { if (r.hay.indexOf(t) < 0) ok = false; }); return ok; }).length;
-  h += '<div class="foot">↑↓ để chọn · Enter: áp dụng gợi ý · Esc: đóng — Tìm toàn văn “' + esc(q) + '” khớp <b>' + nAll + '</b> phiếu (đang áp dụng)</div>';
+  // Phiếu khớp toàn văn (ID, tên, KH, hãng, sale, đại lý, PM, mô tả, BOM…) — ưu tiên khớp ID/tên, mới nhất trước
+  var hits = S.rows.filter(function (r) { for (var i = 0; i < toks.length; i++) if (r.hay.indexOf(toks[i]) < 0) return false; return true; });
+  hits.sort(function (a, b) { return (match(b.id + ' ' + b.name) ? 1 : 0) - (match(a.id + ' ' + a.name) ? 1 : 0) || (b.dTao || 0) - (a.dTao || 0); });
+  if (hits.length) {
+    h += '<div class="grp">Phiếu liên quan · ' + hits.length + ' kết quả</div>';
+    hits.slice(0, 12).forEach(function (r) {
+      items.push({ t: 'r', r: r });
+      h += '<div class="it" data-ai="' + (items.length - 1) + '"><span class="tg">#' + esc(r.id) + '</span><span class="tx">' + hl(r.name, q) +
+        '<div style="font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis">' + hl(r.hang + ' · ' + r.kh + ' · ' + r.sale + (r.dl !== EMPTY ? ' · ' + r.dl : ''), q) + '</div></span><span class="ct">' + stBadge(r.st) + '</span></div>';
+    });
+    items.push({ t: 'all' });
+    h += '<div class="it" data-ai="' + (items.length - 1) + '" style="justify-content:center;font-weight:700;color:var(--brand-3)">' + icon('list') + 'Xem tất cả ' + hits.length + ' phiếu trong bảng chi tiết</div>';
+  } else h += '<div class="foot">Không có phiếu nào chứa “' + esc(q) + '”.</div>';
+  h += '<div class="foot">↑↓ chọn · Enter: mở/áp dụng · Esc: đóng — bảng & biểu đồ đang lọc theo từ khóa “' + esc(q) + '” (' + hits.length + ' phiếu)</div>';
   acState.items = items; acState.idx = -1;
   box.innerHTML = h; box.classList.remove('hidden');
 }
 function pickAc(i) {
   var it = acState.items[i]; if (!it) return;
   if (it.t === 'f') { F.q = ''; $('#q').value = ''; $('#qClr').classList.add('hidden'); F.facets[it.k].add(it.v); S.page = 1; update(); toast('Đã lọc ' + FACET_BY[it.k].label + ': ' + it.v); }
+  else if (it.t === 'all') { closeAc(); $('#tableCard').scrollIntoView({ behavior: 'smooth' }); return; }
   else openDrawer(it.r);
   closeAc();
 }
@@ -2429,7 +2436,7 @@ function bindStatic() {
   q.addEventListener('keydown', function (e) {
     var its = $$('#ac .it');
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (!its.length) return; acState.idx = (acState.idx + (e.key === 'ArrowDown' ? 1 : -1) + its.length) % its.length; its.forEach(function (x, i) { x.classList.toggle('on', i === acState.idx); }); its[acState.idx].scrollIntoView({ block: 'nearest' }); }
-    else if (e.key === 'Enter') { if (acState.idx >= 0) pickAc(+its[acState.idx].dataset.ai); else closeAc(); }
+    else if (e.key === 'Enter') { if (acState.idx >= 0) pickAc(+its[acState.idx].dataset.ai); else { closeAc(); if (F.q) $('#tableCard').scrollIntoView({ behavior: 'smooth' }); } }
     else if (e.key === 'Escape') closeAc();
   });
   $('#ac').addEventListener('mousedown', function (e) { var it = e.target.closest('.it'); if (it) { e.preventDefault(); pickAc(+it.dataset.ai); } });
