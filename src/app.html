@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tổng hợp PO – NTS Hanoi Corp.</title>
+<link rel="icon" type="image/png" href="__LOGO__">
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+<!-- Thư viện được nhúng sẵn để chạy offline 100% (không gọi internet) -->
+<script>/*__XLSX__*/</script>
+<script>/*__CHART__*/</script>
+<script>/*__CONVERTER__*/</script>
+
+<header class="topbar">
+  <div class="wrap">
+    <div class="brand">
+      <img src="__LOGO__" alt="NTS Hanoi Corp.">
+      <div class="sep"></div>
+      <div>
+        <div class="t1">Tổng hợp PO – Yêu cầu đặt hàng</div>
+        <div class="t2">Phòng Quản lý sản phẩm · NTS Hanoi Corp.</div>
+      </div>
+    </div>
+    <div class="tb-file hidden" id="tbFile"><svg class="i"><use href="#i-file"/></svg><b id="tbFileName"></b><span id="tbCount"></span></div>
+    <div class="tb-actions">
+      <button class="btn sm hidden" id="btnReload" title="Nạp file khác"><svg class="i"><use href="#i-upload"/></svg><span>Nạp file khác</span></button>
+      <button class="btn sm hidden" id="btnClean" title="Tải file template chuẩn (Data_sạch) sau convert"><svg class="i"><use href="#i-file"/></svg><span>Tải Data_sạch</span></button>
+      <button class="btn sm primary hidden" id="btnExport"><svg class="i"><use href="#i-download"/></svg><span>Xuất Excel</span></button>
+      <button class="btn sm icon ghost" id="btnSettings" title="Thiết lập cờ nhắc & phân nhóm KH"><svg class="i"><use href="#i-sliders"/></svg></button>
+      <button class="btn sm icon ghost" id="btnTheme" title="Giao diện sáng/tối"><svg class="i"><use href="#i-moon"/></svg></button>
+    </div>
+  </div>
+  <div class="nav-strip"></div>
+</header>
+
+<section class="hero" id="hero">
+  <div class="wrap">
+    <div id="heroEmpty">
+      <h1>Công cụ tổng hợp <span>PO / Yêu cầu đặt hàng</span> theo Hãng</h1>
+      <p class="sub">Nạp file Excel raw xuất từ Base Service → tự động chuẩn hóa sang template <b>Data_sạch</b> → phân tích, lọc, cảnh báo và xuất báo cáo Excel.</p>
+      <div class="hero-grid">
+        <div class="drop" id="drop">
+          <div class="ic"><svg class="i"><use href="#i-upload"/></svg></div>
+          <h3>Kéo-thả file Excel vào đây</h3>
+          <p>hoặc bấm để chọn file · hỗ trợ .xlsx / .xls (raw Base Service hoặc file Data_sạch đã chuẩn hóa)</p>
+          <button class="btn accent" type="button"><svg class="i"><use href="#i-file"/></svg>Chọn file Excel</button>
+        </div>
+        <div class="steps">
+          <div class="step"><b class="n">1</b><div><strong>Nạp file raw</strong>Service Tickets – Yêu cầu đặt hàng (export từ Base).</div></div>
+          <div class="step"><b class="n">2</b><div><strong>Tự động convert</strong>Chuẩn hóa KH, Hãng, Đại lý, Sale, ngày tháng, cờ review – đúng logic convert_service_tickets.py.</div></div>
+          <div class="step"><b class="n">3</b><div><strong>Phân tích & lọc</strong>Lọc đa tiêu chí, biểu đồ động, cờ nhắc cập nhật, tuân thủ HĐ – BB thanh lý.</div></div>
+          <div class="step"><b class="n">4</b><div><strong>Xuất kết quả</strong>Tải file Data_sạch và báo cáo “Tổng hợp PO_Hãng_Tháng M.YYYY.xlsx”.</div></div>
+        </div>
+      </div>
+      <div class="privacy"><svg class="i"><use href="#i-lock"/></svg>Xử lý 100% trên trình duyệt của bạn, không cần internet, không gửi dữ liệu đi đâu.</div>
+    </div>
+    <div id="heroData" class="hidden">
+      <div class="hero-mini">
+        <div style="flex:1;min-width:280px">
+          <h1>Tổng hợp PO theo Hãng · <span id="heroPeriod"></span></h1>
+          <p class="sub" id="heroSub"></p>
+          <div class="meta" id="heroMeta"></div>
+        </div>
+        <div class="dots"><i style="background:#fff"></i><i style="background:var(--cyan)"></i><i style="background:var(--teal)"></i><i style="background:var(--accent)"></i></div>
+      </div>
+    </div>
+  </div>
+</section>
+<input type="file" id="fileInput" accept=".xlsx,.xls,.xlsm,.csv" class="hidden">
+
+<main class="wrap hidden" id="app">
+  <!-- ============ BỘ LỌC ============ -->
+  <div class="card filters" id="filters">
+    <div class="f-row">
+      <div class="search" id="searchBox">
+        <svg class="i"><use href="#i-search"/></svg>
+        <input id="q" type="text" autocomplete="off" placeholder="Tìm nhanh: ID phiếu, tên phiếu, khách hàng, hãng, sale, đại lý, PM, mô tả, BOM…">
+        <kbd id="qKbd">/</kbd>
+        <button class="btn sm icon ghost clr hidden" id="qClr" title="Xóa"><svg class="i"><use href="#i-x"/></svg></button>
+        <div class="ac hidden" id="ac"></div>
+      </div>
+      <div class="ref-box" title="Ngày dùng để tính số ngày chưa cập nhật, trễ giao hàng, license sắp hết hạn">
+        <svg class="i"><use href="#i-clock"/></svg>Ngày đối chiếu:
+        <select id="refMode"><option value="data">Theo dữ liệu</option><option value="today">Hôm nay</option><option value="custom">Tự chọn…</option></select>
+        <input type="date" id="refDate" class="hidden">
+        <b id="refLabel"></b>
+      </div>
+      <div class="fp" id="viewsFp"><button class="btn" id="btnViews"><svg class="i"><use href="#i-bookmark"/></svg>Bộ lọc đã lưu</button></div>
+      <button class="btn" id="btnClearAll"><svg class="i"><use href="#i-refresh"/></svg>Xóa lọc</button>
+    </div>
+    <div class="quick" id="quick"><span class="lbl">Lọc nhanh</span></div>
+    <div class="f-groups" id="fgroups"></div>
+    <div class="active-bar" id="activeBar"></div>
+  </div>
+
+  <div id="warnHost"></div>
+  <div id="alertHost"></div>
+
+  <!-- ============ TỔNG QUAN ============ -->
+  <div class="section-title"><i></i>Tổng quan</div>
+  <div class="ov">
+    <div class="ovp">
+      <div class="dn"><canvas id="cStatus"></canvas></div>
+      <div class="lg"><h4>Kết quả xử lý phiếu</h4><div id="lgStatus"></div><div class="sub"><h4>Phiếu đang xử lý nằm ở bước</h4><div id="lgSteps"></div></div></div>
+    </div>
+    <div class="ovp alt">
+      <div class="dn"><canvas id="cFlag"></canvas></div>
+      <div class="lg"><h4>Tình trạng cập nhật (cờ nhắc)</h4><div id="lgFlag"></div><div class="sub"><h4>Lịch giao hàng (phiếu đang xử lý)</h4><div id="lgGiao"></div></div></div>
+    </div>
+  </div>
+  <div class="kpis" id="kpis"></div>
+  <div class="card" style="margin-top:16px">
+    <div class="card-h"><h3>Nhận định nhanh</h3><span class="hint">tự động theo kết quả lọc</span></div>
+    <ul class="insights" id="insights"></ul>
+  </div>
+
+  <!-- ============ BIỂU ĐỒ ============ -->
+  <div class="section-title"><i></i>Phân tích theo Hãng · Sale · Thời gian</div>
+  <div class="grid g2">
+    <div class="card"><div class="card-h"><h3>Số phiếu theo Hãng</h3><span class="hint">bấm thanh để lọc</span><div class="r"><div class="seg" data-seg="hangMode"><button data-v="st" class="on">Trạng thái</button><button data-v="flow">Luồng nhập</button></div></div></div><div class="card-b"><div class="chart h340"><canvas id="cHang"></canvas></div></div></div>
+    <div class="card"><div class="card-h"><h3>Số phiếu theo Sale (chủ sở hữu thương vụ)</h3><span class="hint">bấm cột để lọc</span></div><div class="card-b"><div class="chart h340"><canvas id="cSale"></canvas></div></div></div>
+  </div>
+  <div class="grid g21" style="margin-top:16px">
+    <div class="card"><div class="card-h"><h3>Xu hướng số phiếu theo tháng tạo</h3><span class="hint">chồng theo Top hãng · bấm để lọc tháng</span></div><div class="card-b"><div class="chart"><canvas id="cMonth"></canvas></div></div></div>
+    <div class="card"><div class="card-h"><h3>Thị phần Hãng</h3><span class="hint">tỷ trọng số phiếu</span></div><div class="card-b"><div class="chart"><canvas id="cShare"></canvas></div></div></div>
+  </div>
+
+  <div class="section-title"><i></i>Tiến độ · Tồn đọng · Thời gian xử lý</div>
+  <div class="grid g2">
+    <div class="card"><div class="card-h"><h3>PM phụ trách (Người thực hiện)</h3><span class="hint">phân theo cờ nhắc · bấm cột để lọc</span></div><div class="card-b"><div class="chart"><canvas id="cPM"></canvas></div></div></div>
+    <div class="card"><div class="card-h"><h3>Tiến độ xử lý (Bước hiện tại)</h3><span class="hint">bấm thanh để lọc</span></div><div class="card-b"><div class="chart"><canvas id="cStep"></canvas></div></div></div>
+  </div>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card"><div class="card-h"><h3>Thời gian xử lý theo Hãng (ngày)</h3><span class="hint">phiếu hoàn thành · trung bình & trung vị</span></div><div class="card-b"><div class="chart"><canvas id="cTG"></canvas></div></div></div>
+    <div class="card"><div class="card-h"><h3>Lịch giao hàng & License hết hạn theo tháng</h3><span class="hint">cơ hội renew · bấm để lọc</span><div class="r"><div class="seg" data-seg="calMode"><button data-v="giao" class="on">Giao hàng</button><button data-v="le">License end</button><button data-v="ls">License start</button></div></div></div><div class="card-b"><div class="chart"><canvas id="cCal"></canvas></div></div></div>
+  </div>
+
+  <div class="section-title"><i></i>Khách hàng · Reseller · Hợp đồng</div>
+  <div class="grid g3">
+    <div class="card"><div class="card-h"><h3>Phân nhóm khách hàng</h3><span class="hint">bấm để lọc</span></div><div class="card-b"><div class="chart h260"><canvas id="cNhom"></canvas></div></div></div>
+    <div class="card"><div class="card-h"><h3>Luồng nhập hàng</h3><span class="hint">Trực tiếp vs Exwork</span></div><div class="card-b"><div class="chart h260"><canvas id="cFlow"></canvas></div></div></div>
+    <div class="card"><div class="card-h"><h3>Tình trạng HĐ với khách hàng</h3><span class="hint">bấm để lọc</span></div><div class="card-b"><div class="chart h260"><canvas id="cHD"></canvas></div></div></div>
+  </div>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card"><div class="card-h"><h3>Top Đại lý / Reseller</h3><span class="hint">bấm thanh để lọc</span><div class="r"><select id="dlTop" class="btn sm"><option value="15">Top 15</option><option value="25">Top 25</option><option value="50">Top 50</option></select></div></div><div class="card-b"><div class="chart h340"><canvas id="cDL"></canvas></div></div></div>
+    <div class="card"><div class="card-h"><h3>Top khách hàng (công ty)</h3><span class="hint">bấm thanh để lọc</span></div><div class="card-b"><div class="chart h340"><canvas id="cKH"></canvas></div></div></div>
+  </div>
+
+  <div class="section-title"><i></i>Bảng thống kê</div>
+  <div class="grid g2">
+    <div class="card"><div class="card-h"><h3>Tuân thủ ký HĐ & Biên bản thanh lý theo Sale</h3><span class="hint">phiếu đã hoàn thành · bấm dòng để lọc</span></div><div class="card-b scrollx" id="tCompliance"></div></div>
+    <div class="card"><div class="card-h"><h3>Tổng hợp theo Hãng</h3><span class="hint">bấm dòng để lọc</span></div><div class="card-b scrollx" id="tHang"></div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><div class="card-h"><h3>Ma trận Hãng × Tháng tạo</h3><span class="hint">bản đồ nhiệt số phiếu</span></div><div class="card-b scrollx" id="tHeat"></div></div>
+
+  <!-- ============ BẢNG CHI TIẾT ============ -->
+  <div class="section-title"><i></i>Chi tiết thương vụ / phiếu đặt hàng</div>
+  <div class="card" id="tableCard">
+    <div class="tbl-tools">
+      <div class="cnt" id="tblCount"></div>
+      <div class="r">
+        <div class="fp" id="colFp"><button class="btn sm" id="btnCols"><svg class="i"><use href="#i-columns"/></svg>Ẩn/hiện cột</button></div>
+        <div class="seg" data-seg="density"><button data-v="normal" class="on">Thoáng</button><button data-v="compact">Gọn</button></div>
+        <select id="pageSize"><option>25</option><option selected>50</option><option>100</option><option value="0">Tất cả</option></select>
+        <button class="btn sm" id="btnCopy" title="Sao chép bảng (dán vào Excel)"><svg class="i"><use href="#i-copy"/></svg>Sao chép</button>
+        <button class="btn sm primary" id="btnExport2"><svg class="i"><use href="#i-download"/></svg>Xuất Excel</button>
+      </div>
+    </div>
+    <div class="tbl-wrap"><table class="dt" id="dt"><thead></thead><tbody></tbody></table></div>
+    <div class="pager" id="pager"></div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <img src="__LOGO__" alt="NTS">
+    <div class="ft">Dữ liệu được tổng hợp nội bộ từ phòng Quản lý sản phẩm - Công ty Nam Trường Sơn Hà Nội</div>
+    <div class="fr">Tool tổng hợp PO · chạy offline · v1.0</div>
+  </div>
+</footer>
+
+<div id="layer"></div>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></symbol>
+  <symbol id="i-columns" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+</svg>
+
+<script>
+/*__APP__*/
+</script>
+</body>
+</html>
