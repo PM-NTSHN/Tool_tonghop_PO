@@ -16,3 +16,6 @@ Bình thường ≤ 7 ngày · Mức 1: 8–14 · Mức 2: 15–30 · Mức 3 (t
 - Mã nguồn: `src/` (`app.html`, `app.css`, `app.js`, `converter.js` – port JS của script Python), thư viện nhúng trong `vendor/` (xlsx-js-style, Chart.js).
 - Đóng gói: `python3 build.py` → tạo lại `Tool tổng hợp PO.html`.
 - Kiểm tra convert bằng Node: `node tools/convert_node.js RAW.xlsx OUT.xlsx` (cần `npm i xlsx-js-style`). Đã đối chiếu với script Python: khớp 100% từng ô trên dữ liệu thật và dữ liệu thử nghiệm biến dạng.
+
+## GitHub Pages
+`index.html` (bản sao của tool, do `build.py` tạo) + `.nojekyll` cho phép mở tool tại `https://pm-ntshn.github.io/Tool_tonghop_PO/`. Dữ liệu vẫn chỉ xử lý trong trình duyệt của người dùng.

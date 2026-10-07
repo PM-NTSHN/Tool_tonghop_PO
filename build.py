@@ -22,9 +22,11 @@ def main():
         assert html.count(k) == 1, k
         html = html.replace(k, v)
     html = html.replace('__LOGO__', logo)
-    out = ROOT / (sys.argv[1] if len(sys.argv) > 1 else 'Tool tổng hợp PO.html')
-    out.write_text(html, encoding='utf-8')
-    print(f'OK -> {out.name} ({out.stat().st_size/1024:.0f} KB)')
+    names = [sys.argv[1]] if len(sys.argv) > 1 else ['Tool tổng hợp PO.html', 'index.html']  # index.html cho GitHub Pages
+    for n in names:
+        out = ROOT / n
+        out.write_text(html, encoding='utf-8')
+        print(f'OK -> {out.name} ({out.stat().st_size/1024:.0f} KB)')
 
 if __name__ == '__main__':
     main()
